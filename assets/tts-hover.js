@@ -1,79 +1,127 @@
-// assets/tts-hover.js  (Option C: speak only current page language)
-
-console.log("TTS hover loaded ✅");
+// assets/tts-hover.js
+console.log("tts-hover.js loaded ✅");
 
 const state = {
   enabled: JSON.parse(localStorage.getItem("tts_enabled") ?? "true"),
+  armed: false,
   timer: null,
   lastSpoken: "",
+
+  // Translation settings
+  translateOn: JSON.parse(localStorage.getItem("tts_translate_on") ?? "false"),
+  targetLang: localStorage.getItem("tts_target_lang") ?? "en", // "en" or "ar"
+  cache: new Map(),
 };
 
 function getPageLang() {
-  // best: <html lang="fr"> ... </html>
-  const htmlLang = document.documentElement.getAttribute("lang");
-  if (htmlLang && htmlLang.trim()) return htmlLang.trim();
-
-  // fallback: browser language
-  return (navigator.language || "fr-FR").trim();
+  return (document.documentElement.getAttribute("lang") || navigator.language || "fr-FR").trim();
 }
 
-function getLabel(el) {
+function primaryLang(tag) {
+  return (tag || "fr").toLowerCase().split("-")[0]; // "fr-FR" -> "fr"
+}
+
+function armOnFirstInteraction() {
+  if (state.armed) return;
+  state.armed = true;
+  try { window.speechSynthesis.cancel(); } catch (e) {}
+  console.log("TTS armed ✅");
+}
+window.addEventListener("pointerdown", armOnFirstInteraction, { once: true });
+window.addEventListener("keydown", armOnFirstInteraction, { once: true });
+
+function speak(text) {
+  if (!state.enabled) return;
+  if (!state.armed) return;
+  if (!text) return;
+  if (!("speechSynthesis" in window)) return;
+
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (!cleaned) return;
+
+  // Speak language depends on translation mode
+  const lang = state.translateOn
+    ? (state.targetLang === "ar" ? "ar" : "en-US")
+    : getPageLang();
+
+  const key = `${lang}::${cleaned}`;
+  if (key === state.lastSpoken) return;
+
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(cleaned);
+  u.lang = lang;
+  window.speechSynthesis.speak(u);
+
+  state.lastSpoken = key;
+}
+
+async function translate(text) {
+  if (!state.translateOn) return text;
+
+  const trimmed = (text || "").trim();
+  if (!trimmed) return trimmed;
+
+  // avoid translating huge blocks (optional safety)
+  const limited = trimmed.slice(0, 300);
+
+  const cacheKey = `${state.targetLang}::${limited}`;
+  if (state.cache.has(cacheKey)) return state.cache.get(cacheKey);
+
+  const res = await fetch("/api/tts/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text: limited,
+      source: primaryLang(getPageLang()), // "fr"
+      target: state.targetLang,           // "en" or "ar"
+    }),
+  });
+
+  if (!res.ok) return limited;
+
+  const data = await res.json();
+  const translated = (data.translated || limited).toString();
+
+  state.cache.set(cacheKey, translated);
+  return translated;
+}
+
+function getTextUnderCursor(x, y) {
+  if (document.caretRangeFromPoint) {
+    const range = document.caretRangeFromPoint(x, y);
+    if (!range || !range.startContainer) return "";
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) return "";
+    return node.textContent?.trim().slice(0, 200) || "";
+  }
+
+  if (document.caretPositionFromPoint) {
+    const pos = document.caretPositionFromPoint(x, y);
+    if (!pos || !pos.offsetNode) return "";
+    const node = pos.offsetNode;
+    if (node.nodeType !== Node.TEXT_NODE) return "";
+    return node.textContent?.trim().slice(0, 200) || "";
+  }
+
+  const el = document.elementFromPoint(x, y);
   if (!el) return "";
 
   const aria = el.getAttribute?.("aria-label");
   if (aria) return aria.trim();
 
-  if (el.tagName === "IMG") {
-    const alt = el.getAttribute("alt");
-    if (alt) return alt.trim();
-  }
+  if (el.tagName === "IMG") return (el.getAttribute("alt") || "").trim();
 
-  if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
-    const value = el.value?.trim();
-    const placeholder = el.getAttribute("placeholder")?.trim();
-    return value || placeholder || "";
-  }
-
-  const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
-  if (text) return text;
-
-  const title = el.getAttribute?.("title");
-  if (title) return title.trim();
-
-  return "";
+  const txt = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+  return txt.slice(0, 200);
 }
 
-function pickTarget(node) {
-  return node?.closest?.(
-    "a, button, img, input, textarea, [role='button'], [aria-label], p, span, li, h1, h2, h3, h4, h5, h6"
-  ) || node;
-}
-
-function speak(text) {
-  if (!state.enabled) return;
-  if (!text) return;
-  if (!("speechSynthesis" in window)) return;
-
-  const lang = getPageLang();
-
-  // avoid repeating same phrase
-  const key = `${lang}::${text}`;
-  if (key === state.lastSpoken) return;
-
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
-
-  window.speechSynthesis.speak(u);
-  state.lastSpoken = key;
-}
-
-document.addEventListener("mouseover", (e) => {
-  const target = pickTarget(e.target);
-  const label = getLabel(target);
-
+document.addEventListener("mousemove", (e) => {
   clearTimeout(state.timer);
-  state.timer = setTimeout(() => speak(label), 250);
+  state.timer = setTimeout(async () => {
+    const text = getTextUnderCursor(e.clientX, e.clientY);
+    const finalText = await translate(text);
+    speak(finalText);
+  }, 300);
 });
 
 window.addEventListener("blur", () => window.speechSynthesis?.cancel());
@@ -94,7 +142,28 @@ window.ttsHover = {
     if (!state.enabled) window.speechSynthesis?.cancel();
     return state.enabled;
   },
+
+  // ✅ these fix your error
+  setTranslate(on) {
+    state.translateOn = !!on;
+    localStorage.setItem("tts_translate_on", JSON.stringify(state.translateOn));
+  },
+  setTargetLang(lang) {
+    state.targetLang = (lang === "ar") ? "ar" : "en";
+    localStorage.setItem("tts_target_lang", state.targetLang);
+    state.cache.clear();
+  },
+
   getState() {
-    return { enabled: state.enabled, lang: getPageLang() };
+    return {
+      enabled: state.enabled,
+      armed: state.armed,
+      translateOn: state.translateOn,
+      targetLang: state.targetLang,
+      pageLang: getPageLang(),
+    };
   },
 };
+
+console.log("tts-hover VERSION = translate-enabled ✅", window.ttsHover);
+

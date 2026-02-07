@@ -15,7 +15,20 @@
   "
 >
   TTS ON
+  
 </button>
+<label class="text-sm flex items-center gap-2">
+  <input type="checkbox"
+         onchange="window.ttsHover.setTranslate(this.checked)">
+  Translate
+</label>
+
+<select class="border rounded px-2 py-1"
+        onchange="window.ttsHover.setTargetLang(this.value)">
+  <option value="en" selected>EN</option>
+  <option value="ar">AR</option>
+</select>
+
 
 </div>
 
@@ -31,6 +44,7 @@
 
 <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+    <h2 class="text-xl font-semibold mb-4">bonjour et bienvenue tout le monde comment allez vous</h2>
 
     <!-- Stats Section -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
