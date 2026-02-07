@@ -15,6 +15,7 @@ security:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+
         main:
             lazy: true
             provider: app_user_provider
@@ -25,11 +26,10 @@ security:
             logout:
                 path: app_logout
                 target: app_homepage
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
 
-    # Note: Only the *first* matching rule is applied
+    # ✅ Note: only the FIRST matching rule applies (order matters)
     access_control:
+        - { path: ^/admin/stats, roles: [ROLE_ADMIN, ROLE_ASSOC] }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/profile, roles: [ROLE_ASSOC, ROLE_DONATEUR, ROLE_ADMIN] }
         - { path: ^/case/social/new, roles: ROLE_ASSOC }
@@ -39,10 +39,8 @@ security:
 when@test:
     security:
         password_hashers:
-            # Password hashers are resource-intensive by design to ensure security.
-            # In tests, it's safe to reduce their cost to improve performance.
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto
-                cost: 4 # Lowest possible value for bcrypt
-                time_cost: 3 # Lowest possible value for argon
-                memory_cost: 10 # Lowest possible value for argon
+                cost: 4
+                time_cost: 3
+                memory_cost: 10

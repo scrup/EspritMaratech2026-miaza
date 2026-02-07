@@ -326,7 +326,7 @@
 
     wrap.innerHTML = `
       <button class="uc-a11y__fab" type="button" aria-haspopup="dialog" aria-controls="uc-a11y-panel" aria-expanded="false" aria-label="Accessibilité">
-        💕
+        🩵
       </button>
 
       <div class="uc-a11y__panel" id="uc-a11y-panel" role="dialog" aria-label="Menu d’accessibilité" aria-modal="false" hidden>

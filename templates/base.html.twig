@@ -168,5 +168,9 @@
     {% block javascripts %}{% endblock %}
     <script src="{{ asset('js/a11y-menu.js') }}"></script>
 
-</body>
+{# Head + Blink navigation (camera) #}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.min.js"></script>
+<script src="{{ asset('js/head-mouse.js') }}"></script>
+
 </html>
