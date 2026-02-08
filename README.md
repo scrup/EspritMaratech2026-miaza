@@ -24,3 +24,9 @@ Miaza est une plateforme web conçue pour :
 - **Système de confiance** : Transparence totale sur l’utilisation des dons.
 - **Base de données centralisée** : Pour éviter la dispersion des informations.
 
+  ## Comment Nous Soutenir ?
+- **Faites un don** : [Lien vers la page de dons](#) (à ajouter).
+- **Partagez le projet** : Parlez de Miaza autour de vous !
+- **Devenez bénévole** : Rejoignez notre équipe pour aider sur le terrain ou en ligne.
+- **Signalez des bugs ou suggérez des améliorations** : Ouvrez une **Issue** sur GitHub.
+
